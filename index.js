@@ -2,19 +2,21 @@ import express from "express"
 
 const app = express();
 
-app.get("/hola",(req, res)=> {
-    res.send("Hola desde express!");
+
+app.use(express.json());
+
+let messages = [];
+
+app.get("/api/message", (req, res) => {
+    res.json({ messages});
 })
 
-app.use(express.static("urls"));
-
-app.get("/api/data", (req, res) => {
-
-    res.json({ message: "https://www.google.com.ar" })
+app.post("/api/message", (req, res) => {
+    
+    messages.push(req.body.text);
+    console.log(messages)
+    res.status(201).json({ success: true, message: "Recibido" });
 });
-
-let message = [];
-
 const PORT = 3000;
 
 app.listen(PORT, () => console.log(`http://localhost:${PORT}`));
