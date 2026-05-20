@@ -1,3 +1,4 @@
+import e from "express";
 import express from "express"
 
 import cron from "node-cron"
@@ -24,36 +25,61 @@ app.post("/api/message", (req, res) => {
     res.status(201).json({ success: true, message: "Recibido" });
 });
 
-const monitorUrl = "https://www.google.com";
+
+const monitores = [
+    {
+        url: "https://www.google.com"
+    
+    },
+    {
+        url: "https://www.amazon.com"
+    },
+    {
+        url: "https://www.mercadolibre.com"
+    }
+]
+
 
 app.get("/check", async (req, res) => {
-
-    const url = req.query.url
-
-    if(!url) {
-        return res.status(400).json({ error: "URL is required" });
+    
+    if(monitores.length === 0) {
+            return res.status(400).json({ error: "No monitors available" });
     }
+    for (const monitor of monitores) {
 
-    try {
-        const response = await fetch(url, {method: "HEAD"});
-        const status = response.status;
-        res.json({ url, status });
-    } catch (error) {
-        res.status(500).json({url, error: "Failed to check URL" });
+        try {
+            const response = await fetch(monitor.url, {method: "HEAD"});
+            const status = response.status;
+            monitor.status = status;
+        } catch (error) {
+            monitor.status = error.response?.status || -1;
+        }
+    
     }
+    res.json(monitores);
 });
 
 
 
 
 cron.schedule('*/1 * * * *', async() => {
-    try {
-        const response = await fetch(monitorUrl, { method: "HEAD" });
-        console.log({ url: monitorUrl, status: response.status });
-    } catch (error) {
-        console.error({ url: monitorUrl, error: "Failed to check URL" });
+    if(monitores.length === 0) {
+        console.log("No monitors available");
+        return;
     }
-});
+    for (const monitor of monitores) {
+
+        try {
+            const response = await fetch(monitor.url, {method: "HEAD"});
+            const status = response.status;
+            monitor.status = status;
+            console.log({ url: monitor.url, status: response.status });
+        } 
+        catch (error) {
+            monitor.status = error.response?.status || -1;
+            console.log({ url: monitor.url, status: monitor.status, error:error.message });
+        }  
+}});
 
 
 const PORT = 3000;
