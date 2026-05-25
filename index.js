@@ -1,4 +1,4 @@
-import e from "express";
+
 import express from "express"
 
 import cron from "node-cron"
@@ -12,32 +12,38 @@ app.use(express.json());
 
 
 
-let messages = [];
-
-app.get("/api/message", (req, res) => {
-    res.json({ messages});
-})
-
-app.post("/api/message", (req, res) => {
-    
-    messages.push(req.body.text);
-    console.log(messages)
-    res.status(201).json({ success: true, message: "Recibido" });
-});
 
 
-const monitores = [
-    {
-        url: "https://www.google.com"
-    
-    },
-    {
-        url: "https://www.amazon.com"
-    },
-    {
-        url: "https://www.mercadolibre.com"
+
+
+
+const monitores = [];
+
+app.post("/monitor", (req, res) => {
+
+    const { url } = req.body;
+
+  
+
+    if (!req.body.url) {
+
+        return res.status(400).json({ error: "URL no proporcionada" });
     }
-]
+    
+    const existe = monitores.some(monitor => monitor.url === url);
+     if (existe) {
+        return res.status(409).json({ error: "URL ya existe!" });
+    }
+    
+    const monitor = {
+        id: monitores.length + 1,
+        url: url,
+        status: null
+    };
+    monitores.push(monitor);
+
+    res.status(201).json({ success: true, monitor });
+   });
 
 
 app.get("/check", async (req, res) => {
