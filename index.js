@@ -25,7 +25,7 @@ app.post("/monitor", (req, res) => {
 
   
 
-    if (!req.body.url) {
+    if (!url) {
 
         return res.status(400).json({ error: "URL no proporcionada" });
     }
@@ -38,7 +38,13 @@ app.post("/monitor", (req, res) => {
     const monitor = {
         id: monitores.length + 1,
         url: url,
-        status: null
+        checks: [{
+            status: null,
+            checkedAt: new Date().toISOString()
+        }
+
+        ],
+        
     };
     monitores.push(monitor);
 
@@ -55,10 +61,15 @@ app.get("/check", async (req, res) => {
 
         try {
             const response = await fetch(monitor.url, {method: "HEAD"});
-            const status = response.status;
-            monitor.status = status;
-        } catch (error) {
-            monitor.status = error.response?.status || -1;
+            monitor.checks.push({
+            status: response.status,           // o -1 en el catch
+            checkedAt: new Date().toISOString()});
+        }
+        catch (error) {
+            monitor.checks.push({
+                status: error.response?.status || -1,
+                checkedAt: new Date().toISOString()
+            });
         }
     
     }
@@ -77,13 +88,18 @@ cron.schedule('*/1 * * * *', async() => {
 
         try {
             const response = await fetch(monitor.url, {method: "HEAD"});
-            const status = response.status;
-            monitor.status = status;
+            monitor.checks.push({
+            status: response.status,           // o -1 en el catch
+            checkedAt: new Date().toISOString()
+});
             console.log({ url: monitor.url, status: response.status });
         } 
         catch (error) {
-            monitor.status = error.response?.status || -1;
-            console.log({ url: monitor.url, status: monitor.status, error:error.message });
+            monitor.checks.push({
+                status: error.response?.status || -1,
+                checkedAt: new Date().toISOString()
+            });
+            console.error({ url: monitor.url, status: error.response?.status || -1, error: error.message });
         }  
 }});
 
