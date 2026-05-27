@@ -51,11 +51,13 @@ app.post("/monitor", (req, res) => {
     res.status(201).json({ success: true, monitor });
    });
 
-
-app.get("/check", async (req, res) => {
+async function checkUrl(monitores) {
     
     if(monitores.length === 0) {
-            return res.status(400).json({ error: "No monitors available" });
+
+        console.log("No hay monitores para verificar.");
+        return;
+           
     }
     for (const monitor of monitores) {
 
@@ -73,35 +75,18 @@ app.get("/check", async (req, res) => {
         }
     
     }
-    res.json(monitores);
+};
+
+
+app.get("/check", async (req, res) => {
+    await checkUrl(monitores);
+    res.json({ monitors: monitores });
 });
-
-
-
 
 cron.schedule('*/1 * * * *', async() => {
-    if(monitores.length === 0) {
-        console.log("No monitors available");
-        return;
-    }
-    for (const monitor of monitores) {
 
-        try {
-            const response = await fetch(monitor.url, {method: "HEAD"});
-            monitor.checks.push({
-            status: response.status,           // o -1 en el catch
-            checkedAt: new Date().toISOString()
+    await checkUrl(monitores);
 });
-            console.log({ url: monitor.url, status: response.status });
-        } 
-        catch (error) {
-            monitor.checks.push({
-                status: error.response?.status || -1,
-                checkedAt: new Date().toISOString()
-            });
-            console.error({ url: monitor.url, status: error.response?.status || -1, error: error.message });
-        }  
-}});
 
 
 const PORT = 3000;
