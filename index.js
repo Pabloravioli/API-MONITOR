@@ -38,20 +38,22 @@ app.post("/monitor", (req, res) => {
     const monitor = {
         id: monitores.length + 1,
         url: url,
-        checks: [{
-            status: null,
-            checkedAt: new Date().toISOString()
-        }
-
-        ],
+        checks: [],
         
     };
     monitores.push(monitor);
 
-    res.status(201).json({ success: true, monitor });
+    res.status(201).json({ message: "Monitor agregado", monitor });
    });
 
-async function checkUrl(monitores) {
+
+
+app.get("/monitors", (req, res) => {
+
+    res.json({ monitors: monitores });
+});
+
+async function checkMonitores(monitores) {
     
     if(monitores.length === 0) {
 
@@ -61,16 +63,23 @@ async function checkUrl(monitores) {
     }
     for (const monitor of monitores) {
 
+        const tiempo = Date.now();
+
         try {
             const response = await fetch(monitor.url, {method: "HEAD"});
+            const tiempoRespuesta = Date.now() - tiempo;
             monitor.checks.push({
-            status: response.status,           // o -1 en el catch
-            checkedAt: new Date().toISOString()});
+                status: response.status,           // o -1 en el catch
+                checkedAt: new Date().toISOString(),
+                responseTime: tiempoRespuesta
+        });
+            
         }
         catch (error) {
             monitor.checks.push({
-                status: error.response?.status || -1,
-                checkedAt: new Date().toISOString()
+                status:-1,
+                checkedAt: new Date().toISOString(),
+                responseTime: null
             });
         }
     
@@ -79,13 +88,14 @@ async function checkUrl(monitores) {
 
 
 app.get("/check", async (req, res) => {
-    await checkUrl(monitores);
+    await checkMonitores(monitores);
     res.json({ monitors: monitores });
+    
 });
 
 cron.schedule('*/1 * * * *', async() => {
 
-    await checkUrl(monitores);
+    await checkMonitores(monitores);
 });
 
 
