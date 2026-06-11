@@ -3,6 +3,9 @@ import express from "express"
 
 import cron from "node-cron"
 
+const mongoose = require('mongoose');
+const db_host = 127.0.0.1.27017;
+const db.url = `mongodb://${db_host}/monitoring`;
 
 
 const app = express();
