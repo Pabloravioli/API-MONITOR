@@ -1,24 +1,47 @@
 
 import express from "express"
-
 import cron from "node-cron"
+import dotenv from "dotenv"
+import mongoose from "mongoose"
 
-const mongoose = require('mongoose');
-const db_host = 127.0.0.1.27017;
-const db.url = `mongodb://${db_host}/monitoring`;
+import dns from "dns";
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
+dotenv.config();
 
 
 const app = express();
-
-
 app.use(express.json());
 
 
+export const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI), 
+        console.log("Conectado a MongoDB");
+    } catch (error) {
+        console.error("Error al conectar a MongoDB:", error);
+        process.exit(1);
+    }};
 
+connectDB();
 
+const monitorSchema = new mongoose.Schema({
+    
+    url: String,
+    checks: [
+        {
+            status: Number,
+            responseTime: Number,
+            checkedAt: Date
+        }
+    ],
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
-
-
+const Monitor = mongoose.model("Monitor", monitorSchema);
 
 const monitores = [];
 
