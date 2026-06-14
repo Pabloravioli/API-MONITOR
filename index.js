@@ -43,74 +43,78 @@ const monitorSchema = new mongoose.Schema({
 
 const Monitor = mongoose.model("Monitor", monitorSchema);
 
-const monitores = [];
 
-app.post("/monitor", (req, res) => {
 
-    const { url } = req.body;
+app.post("/monitor",async (req, res) => {
 
-  
+    
 
-    if (!url) {
+    if (!req.body.url) {
 
         return res.status(400).json({ error: "URL no proporcionada" });
     }
     
-    const existe = monitores.some(monitor => monitor.url === url);
+    const existe = await Monitor.findOne({url: req.body.url});
      if (existe) {
         return res.status(409).json({ error: "URL ya existe!" });
     }
-    
-    const monitor = {
-        id: monitores.length + 1,
-        url: url,
-        checks: [],
-        
-    };
-    monitores.push(monitor);
+
+    const monitor = new Monitor({
+        url: req.body.url,
+        checks: []
+    });
+    await monitor.save();
 
     res.status(201).json({ message: "Monitor agregado", monitor });
    });
 
 
 
-app.get("/monitors", (req, res) => {
-
-    res.json({ monitors: monitores });
+app.get("/monitor",async (req, res) => {
+    try {
+        const monitor = await Monitor.find();
+        res.json({ monitors: monitor });
+    }
+    catch (error) {
+        res.status(500).json({ error: "Error al obtener monitores" });
+    }
 });
 
-async function checkMonitores(monitores) {
-    
-    if(monitores.length === 0) {
-
-        console.log("No hay monitores para verificar.");
-        return;
-           
-    }
-    for (const monitor of monitores) {
-
-        const tiempo = Date.now();
-
+async function checkMonitores() {
+    try {
+        const monitores = await Monitor.find();
+        for (const monitor of monitores) {
         try {
-            const response = await fetch(monitor.url, {method: "HEAD"});
-            const tiempoRespuesta = Date.now() - tiempo;
-            monitor.checks.push({
-                status: response.status,           // o -1 en el catch
-                checkedAt: new Date().toISOString(),
-                responseTime: tiempoRespuesta
-        });
+            const tiempo = Date.now();
+            const response = await fetch(monitor.url);
             
-        }
-        catch (error) {
-            monitor.checks.push({
-                status:-1,
-                checkedAt: new Date().toISOString(),
-                responseTime: null
-            });
-        }
-    
+            await Monitor.updateOne(
+            { _id: monitor._id },
+            { $push: {
+                checks: {
+                    status: response.status,
+                    responseTime: Date.now() - tiempo,
+                    checkedAt: new Date().toISOString()
+                }
+            }} );
+        }catch (error) {
+            await Monitor.updateOne(
+                { _id: monitor._id },
+                { $push: {
+                    checks: {
+                        status: -1,
+                        responseTime: -1,
+                        checkedAt: new Date().toISOString()
+                    }
+                }});
+        }}
+    }catch (error) {
+        console.error("Error al verificar monitores:", error);
+
     }
 };
+
+
 
 
 app.get("/check", async (req, res) => {
