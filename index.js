@@ -118,14 +118,15 @@ async function checkMonitores() {
 
 
 app.get("/check", async (req, res) => {
-    await checkMonitores(monitores);
+    await checkMonitores();
+    const monitores = await Monitor.find();
     res.json({ monitors: monitores });
     
 });
 
 cron.schedule('*/1 * * * *', async() => {
 
-    await checkMonitores(monitores);
+    await checkMonitores();
 });
 
 
