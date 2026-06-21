@@ -114,30 +114,80 @@ async function checkMonitores() {
     }
 };
 
+function calcularMetricas(monitor) {
+    const totalChecks = monitor.checks.length;
+    const successfulChecks = monitor.checks.filter(check => check.status >= 200 && check.status < 400);
+    const cantidadExitosa = successfulChecks.length;
+    const lastCheck = monitor.checks.length > 0 ? monitor.checks[monitor.checks.length - 1] : null;
+    const uptimePercentage = totalChecks > 0 ? (cantidadExitosa / totalChecks) * 100 : 0;
+    const averageResponseTime = cantidadExitosa > 0 ? successfulChecks.reduce((acc, check) => acc + check.responseTime, 0) / cantidadExitosa : 0;
+    return {
+        url: monitor.url,
+        lastStatus: lastCheck ? lastCheck.status : "N/A",
+        lastResponseTime: lastCheck ? lastCheck.responseTime : "N/A",
+        totalChecks,
+        successfulChecks: cantidadExitosa,
+        uptimePercentage,
+        averageResponseTime
+    };
+}
+
 
 app.get("/monitor/summary", async (req, res) => {
     try {
         const monitores = await Monitor.find();
         const summary = monitores.map(monitor => {
-            const totalChecks = monitor.checks.length;
-            const successfulChecks = monitor.checks.filter(check => check.status >= 200 && check.status < 400);
-            const cantidadExitosa = successfulChecks.length;
-            const lastCheck = monitor.checks.length > 0 ? monitor.checks[monitor.checks.length - 1] : null;
-            const uptimePercentage = totalChecks > 0 ? (cantidadExitosa /totalChecks ) * 100 : 0;
-            const averageResponseTime = cantidadExitosa > 0 ? successfulChecks.reduce((acc, check) => acc + check.responseTime, 0) / cantidadExitosa : 0;
-            return {
-                url: monitor.url,
-                lastStatus: lastCheck ? lastCheck.status : "N/A",
-                lastResponseTime: lastCheck ? lastCheck.responseTime : "N/A",
-                totalChecks,
-                successfulChecks: cantidadExitosa,
-                uptimePercentage,
-                averageResponseTime
-            };
+            return calcularMetricas(monitor);
         });
         res.json({ summary });
     } catch (error) {
         res.status(500).json({ error: "Error al obtener resumen de monitores" });
+    }
+});
+
+app.get("/monitor/:id", async (req, res) => {
+    try {
+        const monitor = await Monitor.findById(req.params.id);
+        if (!monitor) {
+            return res.status(404).json({ error: "Monitor no encontrado" });
+        }
+        const metrics = calcularMetricas(monitor);
+        
+
+        res.json({ monitor: metrics });
+    } catch (error) {
+        res.status(500).json({ error: "Error al obtener monitor" });
+    }
+});
+
+app.delete("/monitor/:id", async (req, res) => {
+    try {
+        const monitor = await Monitor.findByIdAndDelete(req.params.id);
+        if (!monitor) {
+            return res.status(404).json({ error: "Monitor no encontrado" });
+        }
+        res.json({ message: "Monitor eliminado", monitor });
+    } catch (error) {
+        res.status(500).json({ error: "Error al eliminar monitor" });
+    }
+});
+
+app.put("/monitor/:id", async (req, res) => {
+    try {
+        const existe = await Monitor.findOne({url: req.body.url});
+        if (existe) {
+            return res.status(409).json({ error: "URL ya existe!" });
+        }
+        if (!req.body.url) {
+            return res.status(400).json({ error: "URL no proporcionada" });
+        }
+        const monitor = await Monitor.findByIdAndUpdate(req.params.id,{ url: req.body.url }, { new: true });
+        if (!monitor) {
+            return res.status(404).json({ error: "Monitor no encontrado" });
+        }
+        res.json({ message: "Monitor actualizado", monitor });
+    } catch (error) {
+        res.status(500).json({ error: "Error al actualizar monitor" });
     }
 });
 
