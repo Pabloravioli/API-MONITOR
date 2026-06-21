@@ -3,16 +3,11 @@ import express from "express"
 import cron from "node-cron"
 import dotenv from "dotenv"
 import mongoose from "mongoose"
-
+import router from "./routes/monitorRoutes.js"
 import dns from "dns";
+import "./cron/checkMonitores.js";
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
-
 dotenv.config();
-
-
-const app = express();
-app.use(express.json());
-
 
 export const connectDB = async () => {
     try {
@@ -25,186 +20,14 @@ export const connectDB = async () => {
 
 connectDB();
 
-const monitorSchema = new mongoose.Schema({
-    
-    url: String,
-    checks: [
-        {
-            status: Number,
-            responseTime: Number,
-            checkedAt: Date
-        }
-    ],
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
-});
-
-const Monitor = mongoose.model("Monitor", monitorSchema);
 
 
 
-app.post("/monitor",async (req, res) => {
+const app = express();
+app.use(express.json());
 
-    
-
-    if (!req.body.url) {
-
-        return res.status(400).json({ error: "URL no proporcionada" });
-    }
-    
-    const existe = await Monitor.findOne({url: req.body.url});
-     if (existe) {
-        return res.status(409).json({ error: "URL ya existe!" });
-    }
-
-    const monitor = new Monitor({
-        url: req.body.url,
-        checks: []
-    });
-    await monitor.save();
-
-    res.status(201).json({ message: "Monitor agregado", monitor });
-   });
-
-
-
-app.get("/monitor",async (req, res) => {
-    try {
-        const monitor = await Monitor.find();
-        res.json({ monitors: monitor });
-    }
-    catch (error) {
-        res.status(500).json({ error: "Error al obtener monitores" });
-    }
-});
-
-async function checkMonitores() {
-    try {
-        const monitores = await Monitor.find();
-        for (const monitor of monitores) {
-        try {
-            const tiempo = Date.now();
-            const response = await fetch(monitor.url);
-            
-            await Monitor.updateOne(
-            { _id: monitor._id },
-            { $push: {
-                checks: {
-                    status: response.status,
-                    responseTime: Date.now() - tiempo,
-                    checkedAt: new Date().toISOString()
-                }
-            }} );
-        }catch (error) {
-            await Monitor.updateOne(
-                { _id: monitor._id },
-                { $push: {
-                    checks: {
-                        status: -1,
-                        responseTime: -1,
-                        checkedAt: new Date().toISOString()
-                    }
-                }});
-        }}
-    }catch (error) {
-        console.error("Error al verificar monitores:", error);
-
-    }
-};
-
-function calcularMetricas(monitor) {
-    const totalChecks = monitor.checks.length;
-    const successfulChecks = monitor.checks.filter(check => check.status >= 200 && check.status < 400);
-    const cantidadExitosa = successfulChecks.length;
-    const lastCheck = monitor.checks.length > 0 ? monitor.checks[monitor.checks.length - 1] : null;
-    const uptimePercentage = totalChecks > 0 ? (cantidadExitosa / totalChecks) * 100 : 0;
-    const averageResponseTime = cantidadExitosa > 0 ? successfulChecks.reduce((acc, check) => acc + check.responseTime, 0) / cantidadExitosa : 0;
-    return {
-        url: monitor.url,
-        lastStatus: lastCheck ? lastCheck.status : "N/A",
-        lastResponseTime: lastCheck ? lastCheck.responseTime : "N/A",
-        totalChecks,
-        successfulChecks: cantidadExitosa,
-        uptimePercentage,
-        averageResponseTime
-    };
-}
-
-
-app.get("/monitor/summary", async (req, res) => {
-    try {
-        const monitores = await Monitor.find();
-        const summary = monitores.map(monitor => {
-            return calcularMetricas(monitor);
-        });
-        res.json({ summary });
-    } catch (error) {
-        res.status(500).json({ error: "Error al obtener resumen de monitores" });
-    }
-});
-
-app.get("/monitor/:id", async (req, res) => {
-    try {
-        const monitor = await Monitor.findById(req.params.id);
-        if (!monitor) {
-            return res.status(404).json({ error: "Monitor no encontrado" });
-        }
-        const metrics = calcularMetricas(monitor);
-        
-
-        res.json({ monitor: metrics });
-    } catch (error) {
-        res.status(500).json({ error: "Error al obtener monitor" });
-    }
-});
-
-app.delete("/monitor/:id", async (req, res) => {
-    try {
-        const monitor = await Monitor.findByIdAndDelete(req.params.id);
-        if (!monitor) {
-            return res.status(404).json({ error: "Monitor no encontrado" });
-        }
-        res.json({ message: "Monitor eliminado", monitor });
-    } catch (error) {
-        res.status(500).json({ error: "Error al eliminar monitor" });
-    }
-});
-
-app.put("/monitor/:id", async (req, res) => {
-    try {
-        const existe = await Monitor.findOne({url: req.body.url});
-        if (existe) {
-            return res.status(409).json({ error: "URL ya existe!" });
-        }
-        if (!req.body.url) {
-            return res.status(400).json({ error: "URL no proporcionada" });
-        }
-        const monitor = await Monitor.findByIdAndUpdate(req.params.id,{ url: req.body.url }, { new: true });
-        if (!monitor) {
-            return res.status(404).json({ error: "Monitor no encontrado" });
-        }
-        res.json({ message: "Monitor actualizado", monitor });
-    } catch (error) {
-        res.status(500).json({ error: "Error al actualizar monitor" });
-    }
-});
-
-app.get("/check", async (req, res) => {
-    await checkMonitores();
-    const monitores = await Monitor.find();
-    res.json({ monitors: monitores });
-    
-});
-
-cron.schedule('*/1 * * * *', async() => {
-
-    await checkMonitores();
-});
-
+app.use(router);
 
 const PORT = 3000;
-
-app.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Servidor iniciado en http://localhost:${PORT}`));
 
