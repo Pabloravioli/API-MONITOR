@@ -15,22 +15,31 @@ async function checkMonitores() {
             { _id: monitor._id },
             { $push: {
                 checks: {
+                    $each: [{
                     status: response.status,
                     responseTime: Date.now() - tiempo,
                     checkedAt: new Date().toISOString()
+                }],
+                $slice: -100,
+                     }
                 }
-            }} );
+            } 
+            );
         }catch (error) {
             await Monitor.updateOne(
                 { _id: monitor._id },
                 { $push: {
                     checks: {
-                        status: -1,
-                        responseTime: -1,
-                        checkedAt: new Date().toISOString()
+                        $each: [{
+                            status: -1,
+                            responseTime: -1,
+                            checkedAt: new Date().toISOString()
+                        }],
+                        $slice: -100,
                     }
                 }});
         }}
+        
     }catch (error) {
         console.error("Error al verificar monitores:", error);
 
