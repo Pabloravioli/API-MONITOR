@@ -6,8 +6,11 @@ import mongoose from "mongoose"
 import router from "./routes/monitorRoutes.js"
 import dns from "dns";
 import "./cron/checkMonitores.js";
+import cors from 'cors'
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 dotenv.config();
+
+
 
 export const connectDB = async () => {
     try {
@@ -24,6 +27,7 @@ connectDB();
 
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 app.use(router);

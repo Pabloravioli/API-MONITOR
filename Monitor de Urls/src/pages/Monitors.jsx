@@ -1,28 +1,32 @@
-import { response } from "express";
+import { useState,  useEffect} from "react";
+
 
 function Monitors() {
   const[monitors, setMonitors] = useState([]);
   const[loading, setLoading] = useState(true);
   const[error, setError] = useState(null);
+  
+ 
 
   useEffect(() => {
-    fetch ('http://localhost:5173/monitors')
-    .then(res =>{
-      return res.json();
-    })
-    .then(data =>{
-      console.log(data);
+    fetch ('http://localhost:3000/monitor')
+    .then(res => res.json())
+    .then(data =>{setMonitors(data.monitors)
+     setLoading(false)})
+    .catch(err => setError(err.message))
+  },[])
 
-    },[]);
-
-    return(
-      <div className="">
-
-      </div>
-    )
-    if (loading) return <p>Cargando...</p>
-    if (error) return <p>Error: {error}</p>
-    return <p>datos acá</p>
+  if (loading) return <p>Cargando...</p>
+  if (error) return <p>Error: {error}</p>
+ console.log(monitors)
+ return (
+   <div>
+     {monitors.map(monitor => (
+      <p key={monitor._id}>{monitor.url}</p>
+    ))}
+  </div>
+)
+   
 }
 
 export default Monitors
