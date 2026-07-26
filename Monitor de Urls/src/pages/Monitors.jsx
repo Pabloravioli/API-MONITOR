@@ -1,4 +1,5 @@
-import { useState,  useEffect} from "react";
+import { useState,  useEffect} from "react"
+import {Link} from 'react-router-dom'
 
 
 function Monitors() {
@@ -22,7 +23,8 @@ function Monitors() {
  return (
    <div>
      {monitors.map(monitor => (
-      <p key={monitor._id}>{monitor.url}</p>
+      <Link to={`/monitors/${monitor._id}`} key={monitor._id}>
+  {monitor.url} </Link>
     ))}
   </div>
 )
