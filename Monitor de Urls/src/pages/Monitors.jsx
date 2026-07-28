@@ -19,7 +19,6 @@ function Monitors() {
 
   if (loading) return <p>Cargando...</p>
   if (error) return <p>Error: {error}</p>
- console.log(monitors)
  return (
    <div>
      {monitors.map(monitor => (
