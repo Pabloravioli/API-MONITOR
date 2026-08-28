@@ -10,9 +10,9 @@ function Monitors() {
  
 
   useEffect(() => {
-    fetch ('http://localhost:3000/monitor')
+    fetch ('http://localhost:3000/monitor/summary')
     .then(res => res.json())
-    .then(data =>{setMonitors(data.monitors)
+    .then(data =>{setMonitors(data.summary)
      setLoading(false)})
     .catch(err => setError(err.message))
   },[])

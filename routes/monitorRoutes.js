@@ -42,14 +42,35 @@ router.get("/monitor",async (req, res) => {
     }
 });
 
+router.get("/monitor/stats", async (req, res) => {
+    try {
+        const monitores = await Monitor.find();
+        const metricas = monitores.map(m => calcularMetricas(m));
+        
+        const total = metricas.length;
+        const activos = metricas.filter(m => m.lastStatus === 200).length;
+        const caidos = total - activos;
+        const uptimePromedio = total > 0 
+            ? metricas.reduce((acc, m) => acc + m.uptimePercentage, 0) / total 
+            : 0;
+
+        res.json({ total, activos, caidos, uptimePromedio })
+    } catch (error) {
+        res.status(500).json({ error: "Error al obtener stats" })
+    }
+});
+
 
 router.get("/monitor/summary", async (req, res) => {
     try {
         const monitores = await Monitor.find();
         const summary = monitores.map(monitor => {
-            return calcularMetricas(monitor);
+            return { _id: monitor._id,
+                ...calcularMetricas(monitor)}
         });
-        res.json({ summary });
+        res.json({ summary,
+
+         });
     } catch (error) {
         res.status(500).json({ error: "Error al obtener resumen de monitores" });
     }
@@ -64,7 +85,9 @@ router.get("/monitor/:id", async (req, res) => {
         const metrics = calcularMetricas(monitor);
         
 
-        res.json({ monitor: metrics });
+        res.json({ monitor: metrics,
+            checks: monitor.checks
+         });
     } catch (error) {
         res.status(500).json({ error: "Error al obtener monitor" });
     }
