@@ -12,7 +12,9 @@ export function calcularMetricas(monitor) {
         totalChecks,
         successfulChecks: cantidadExitosa,
         uptimePercentage,
-        averageResponseTime
+        averageResponseTime,
+        lastCheckedAt: lastCheck ? lastCheck.checkedAt : "N/A",
+        createdAt: monitor.checks.length > 0 ? monitor.checks[0].checkedAt : "N/A"
     };
 }
 
