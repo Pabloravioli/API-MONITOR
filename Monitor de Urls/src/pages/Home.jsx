@@ -1,53 +1,89 @@
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 
 function Home() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [stats, setStats] = useState(null)
+  const [monitors, setMonitors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetch('http://localhost:3000/monitor/stats')
-      .then(res => res.json())
-      .then(data => {
-        setStats(data)
+    Promise.all([
+      fetch('http://localhost:3000/monitor/stats').then(r => r.json()),
+      fetch('http://localhost:3000/monitor/summary').then(r => r.json())
+    ])
+      .then(([statsData, summaryData]) => {
+        setStats(statsData)
+        setMonitors(summaryData.summary)
         setLoading(false)
       })
       .catch(err => setError(err.message))
   }, [])
 
-  if (loading) return <p className="p-4">Cargando...</p>
-  if (error) return <p className="p-4 text-red-500">Error: {error}</p>
+  if (loading) return <p className="p-8 text-gray-400">Cargando...</p>
+  if (error) return <p className="p-8 text-red-400">Error: {error}</p>
+
+  const uptime = stats.total > 0 ? Math.round((stats.activos / stats.total) * 100) : 0
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
+    <div className="min-h-screen bg-blue-500 px-4 py-8 sm:px-8 ">
+      <div className="max-w-2xl mx-auto">
+        <p className="text-red-500 text-4xl">Test Tailwind</p>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-3xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-500 text-sm">Total de monitors</p>
-          <span className="text-3xl font-bold">{stats.total}</span>
-        </div>
+        <h1 className="text-xl font-medium text-gray-800 mb-6">Dashboard</h1>
 
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-500 text-sm">Activos</p>
-          <span className="text-3xl font-bold text-green-600">{stats.activos}</span>
-        </div>
-
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-500 text-sm">Caídos</p>
-          <span className="text-3xl font-bold text-red-500">{stats.caidos}</span>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4 flex gap-4">
-          <div className="flex-1 bg-green-50 rounded-lg p-4 text-center">
-            <p className="text-3xl font-bold text-green-600">{stats.activos}</p>
-            <p className="text-sm text-green-700 mt-1">Servicios funcionando</p>
+        {/* Cards de stats */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">Total</p>
+            <p className="text-2xl font-medium text-gray-800">{stats.total}</p>
           </div>
-          <div className="flex-1 bg-red-50 rounded-lg p-4 text-center">
-            <p className="text-3xl font-bold text-red-500">{stats.caidos}</p>
-            <p className="text-sm text-red-700 mt-1">Servicios caídos</p>
+          <div className="bg-white rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">Activos</p>
+            <p className="text-2xl font-medium text-emerald-500">{stats.activos}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">Caídos</p>
+            <p className="text-2xl font-medium text-red-400">{stats.caidos}</p>
           </div>
         </div>
+
+        {/* Barra de uptime */}
+        <div className="bg-white rounded-xl p-5 mb-6">
+          <div className="flex justify-between text-sm text-gray-400 mb-2">
+            <span>Uptime promedio</span>
+            <span className="font-medium text-gray-700">{uptime}%</span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-400 rounded-full transition-all"
+              style={{ width: `${uptime}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Lista de monitores */}
+        <div className="bg-white rounded-xl p-5">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Monitores</p>
+          <div className="divide-y divide-gray-100">
+            {monitors.map(m => (
+              <Link
+                key={m._id}
+                to={`/monitors/${m._id}`}
+                className="flex items-center justify-between py-3 hover:bg-gray-50 px-2 -mx-2 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${m.lastStatus === 200 ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                  <span className="text-sm text-gray-700 truncate">{m.url}</span>
+                </div>
+                <span className={`text-xs font-medium px-3 py-1 rounded-full shrink-0 ml-3 ${m.lastStatus === 200 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+                  {m.lastStatus === 200 ? 'Activo' : 'Caído'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   )
